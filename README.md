@@ -128,6 +128,18 @@ result = analyze_model(
 
 ## 示例与验证
 
+完整功能总览：[Feature overview notebook](examples/1_feature_overview/example.ipynb)。
+仿照 PySINDy 的分节教程，包含全部公共分析入口、底层工具与原有三个示例，
+并展示布尔系统、随机转移、非线性映射、振子、Lorenz 流和学习模型。
+图表输出已保存在 notebook 中，参数附有简短英文说明。
+
+从仓库根目录安装并打开：
+
+```bash
+python -m pip install -e '.[notebooks]'
+python -m jupyter lab examples/1_feature_overview/example.ipynb
+```
+
 ```bash
 python examples/discrete_xor.py
 python examples/known_dynamics.py

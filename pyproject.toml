@@ -25,6 +25,7 @@ Documentation = "https://github.com/Matthew-ymz/EID#readme"
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "build>=1", "ruff>=0.9"]
+notebooks = ["matplotlib>=3.7", "nbformat>=5.9", "nbclient>=0.10", "ipykernel>=6.29", "jupyterlab>=4"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
