@@ -1,0 +1,78 @@
+{
+  "extracted_on": "2026-10-08",
+  "source_repository": "https://github.com/Matthew-ymz/EISyn",
+  "source_commit": "721d4d30458c7655c66c36aa2b44525dc8ec336f",
+  "note": "Hashes refer to the working files read at extraction time. Source repository has unrelated uncommitted changes.",
+  "files": [
+    {
+      "source": "scripts/spt.py",
+      "destination": "src/eid/spt.py",
+      "sha256": "07633fcade484f7c7899f2d2612b79755cc848175be1697666cf0c6d1bf2a409",
+      "mode": "adapted copy",
+      "adaptations": "Finite-value and source-list validation; import/type/format cleanup. Algorithms and legacy policies retained. Import namespace renamed to eid for the public release.",
+      "destination_sha256": "3f75446df9bcca589752aca42d21f570fb28b55e6146b0360646a05cf6c8dff9"
+    },
+    {
+      "source": "scripts/phi_hierarchy.py",
+      "destination": "src/eid/compat.py",
+      "sha256": "ff247de92b59ac438254d92fa7384077820f14d171bbc0f60f73b2f608ff6d60",
+      "mode": "adapted copy",
+      "adaptations": "Import paths target eid.spt; import/type/format cleanup. Import namespace renamed to eid for the public release.",
+      "destination_sha256": "5cfd8efd35c555f2a97e8a2cc171200ec92b741f93ab25a7c8a45faf367a8933"
+    },
+    {
+      "source": "exp/TM/transport_map_density.py",
+      "destination": "src/eid/estimators/transport_map.py",
+      "sha256": "285ec46c9282e6e98cd0af47c0addce6ee9bfd115de0285a3b5e9d908bc5c259",
+      "mode": "adapted copy",
+      "adaptations": "Bits metadata, corrected backend label, negative EI preserved by default, finite sample checks, import/type/format cleanup. Import namespace renamed to eid for the public release.",
+      "destination_sha256": "57df2d1ff8eea5c2e24ebebc0030355a2a0470cfe6cc652facc2c50ca2a4a908"
+    },
+    {
+      "source": "tests/test_spt_core.py",
+      "destination": "tests/test_spt_core.py",
+      "sha256": "2c3d330c108ace6ea0054ef73c5c1680d548cd3b06d6919dc1e9b7a7e470c321",
+      "mode": "adapted copy",
+      "adaptations": "New import path and formatting. Import namespace renamed to eid for the public release.",
+      "destination_sha256": "746852b52c3f10fc4915e6a40c250b7437ce4bfde376438e53e6878f4445f391"
+    },
+    {
+      "source": "tests/test_transport_map_density.py",
+      "destination": "tests/test_transport_map.py",
+      "sha256": "9adf745f7caf5ee4ea51d985cc94c4b0be4c24242b03e039162eabc38c27285a",
+      "mode": "adapted copy",
+      "adaptations": "New import path, removed the original notebook-path test, import/format cleanup. Import namespace renamed to eid for the public release.",
+      "destination_sha256": "f93c8984eea74023c4f767e9690e21d94624921eeb1d9e049330bf8a3015b37c"
+    },
+    {
+      "source": "utils.py",
+      "destination": "src/eid/discrete.py",
+      "sha256": "6bab7995771047a0c57bbab566b5fdf56cfa702061ff2fd788862f28d8b95a84",
+      "mode": "adapted function extraction",
+      "functions": [
+        "_encode_binary_states",
+        "_node_activation_probability",
+        "_normalize_indices",
+        "_validate_system_tpm",
+        "build_deterministic_boolean_tpm",
+        "build_probabilistic_boolean_tpm",
+        "coarse_grain_binary_or_tpm",
+        "coarse_grain_output_tpm",
+        "coarse_grain_tpm_by_state_labels",
+        "discrete_effective_information",
+        "effective_information_from_tpm",
+        "enumerate_binary_states",
+        "source_subset_tpm",
+        "source_target_tpm",
+        "target_subset_tpm"
+      ],
+      "adaptations": "Extracted dependency closure, removed plotting/training imports, validated log base and finite TPM, import/type/format cleanup. Import namespace renamed to eid for the public release.",
+      "destination_sha256": "eebe12d03fe96cf9d7982c471b4b492112302c92f101fe9e14ab4bb7abe8799e"
+    }
+  ],
+  "new_runtime_files": [
+    "src/eid/__init__.py",
+    "src/eid/analysis.py",
+    "src/eid/interventions.py"
+  ]
+}

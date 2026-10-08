@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eid"
+version = "0.1.0"
+description = "Effective information, source-side PEID, and Synergy Partition Trees"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = ["numpy>=1.24", "scipy>=1.10"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering",
+]
+
+[project.urls]
+Homepage = "https://github.com/Matthew-ymz/EID"
+Repository = "https://github.com/Matthew-ymz/EID"
+Issues = "https://github.com/Matthew-ymz/EID/issues"
+Documentation = "https://github.com/Matthew-ymz/EID#readme"
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "build>=1", "ruff>=0.9"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["eid*"]
+
+[tool.setuptools.package-data]
+eid = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 110
