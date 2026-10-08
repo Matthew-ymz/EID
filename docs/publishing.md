@@ -1,6 +1,6 @@
 # 发布流程
 
-发行包：`eid`。导入名：`eid`。许可证：MIT。
+发行包：`eid-toolbox`。导入名：`eid`。许可证：MIT。
 
 GitHub 仓库：<https://github.com/Matthew-ymz/EID>。
 
@@ -10,9 +10,9 @@ GitHub 仓库：<https://github.com/Matthew-ymz/EID>。
 
 | 字段 | 值 |
 |---|---|
-| PyPI Project Name | `eid` |
+| PyPI Project Name | `eid-toolbox` |
 | Owner | `Matthew-ymz` |
-| Repository name | `eid` |
+| Repository name | `EID` |
 | Workflow name | `release.yml` |
 | Environment name | `pypi` |
 
@@ -21,6 +21,8 @@ GitHub 仓库：<https://github.com/Matthew-ymz/EID>。
 首次完成 PyPI 账号配置前，工作流只构建并检查分发包；上传步骤保持关闭。
 
 项目名称只有在首次成功上传后才在 PyPI 创建，pending publisher 本身不预留包名。
+
+PyPI 拒绝了最初的发行名 `eid`，原因是与已有项目名称过于相似。后续使用 `eid-toolbox`；该名称是否可注册，以 PyPI 提交结果为准。已发布的 GitHub `v0.1.0` 保留原状，名称修订采用 `0.1.1`。
 
 ## 每次发布
 

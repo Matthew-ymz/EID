@@ -47,4 +47,4 @@
 - Base dependencies remain NumPy and SciPy. Keep domain data, weights and experiment orchestration outside src/eid.
 - Public results declare information units and retain raw estimated values with numerical diagnostics.
 - Read docs/method_contract.md and docs/source_manifest.json for the extraction boundary; they do not establish that an old manuscript remains current.
-- The package uses the MIT license approved for publication. Distribution name: eid; import namespace: eid. Confirm remote release status before claiming publication success.
+- The package uses the MIT license approved for publication. Distribution name: eid-toolbox; import namespace: eid. Confirm remote release status before claiming publication success.

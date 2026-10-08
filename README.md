@@ -2,7 +2,7 @@
 
 从 [EISyn](https://github.com/Matthew-ymz/EISyn) 抽取的独立 Python 工具库，用于有效信息（EI）、整合有效信息（Ξ）和 Synergy Partition Tree（SPT）分析。
 
-当前版本为 `0.1.0`，处于 Alpha 阶段。发行包名为 `eid`，导入名为 `eid`。源码仓库：[Matthew-ymz/EID](https://github.com/Matthew-ymz/EID)。
+当前版本为 `0.1.1`，处于 Alpha 阶段。发行包名为 `eid-toolbox`，导入名为 `eid`。源码仓库：[Matthew-ymz/EID](https://github.com/Matthew-ymz/EID)。
 
 ## 安装
 
@@ -24,7 +24,7 @@ python -m build
 
 安装后无需 EISyn 的源码、数据目录、模型权重或运行环境。
 
-发布到 PyPI 后可使用 `python -m pip install eid`。实际发布状态以 [PyPI 项目页](https://pypi.org/project/eid/) 为准。
+发布到 PyPI 后可使用 `python -m pip install eid-toolbox`，代码使用 `import eid`。实际发布状态以 [PyPI 项目页](https://pypi.org/project/eid-toolbox/) 为准。`eid` 作为 PyPI 发行名被平台的相似名称规则拒绝，工具箱的项目名和 Python 导入名仍为 EID / `eid`。
 
 ## 当前可用入口
 

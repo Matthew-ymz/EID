@@ -25,7 +25,7 @@ jobs:
           import os
           from importlib.metadata import version
           tag = os.environ.get("RELEASE_TAG", "")
-          expected = "v" + version("eid")
+          expected = "v" + version("eid-toolbox")
           if tag and tag != expected:
               raise SystemExit(f"Release tag {tag!r} does not match {expected!r}.")
           PY
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/eid/
+      url: https://pypi.org/project/eid-toolbox/
     permissions:
       id-token: write
     steps:

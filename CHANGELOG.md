@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — 2026-10-08
+
+- Changed the distribution name to `eid-toolbox` after PyPI rejected `eid` as too similar to an existing project.
+- Kept the EID project name, `eid` import namespace and analysis algorithms.
+- Updated publishing metadata and instructions; preserved the published GitHub `v0.1.0` release.
+
 ## 0.1.0 — 2026-10-08
 
 - Prepared the first public Alpha release under the user-selected MIT license.
