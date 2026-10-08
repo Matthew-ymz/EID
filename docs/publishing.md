@@ -4,6 +4,8 @@
 
 GitHub 仓库：<https://github.com/Matthew-ymz/EID>。
 
+2026-10-08，[EID 0.1.1](https://github.com/Matthew-ymz/EID/releases/tag/v0.1.1) 和 [PyPI eid-toolbox 0.1.1](https://pypi.org/project/eid-toolbox/0.1.1/) 已发布。首次 Trusted Publishing 上传成功，仓库变量 `PYPI_PUBLISHING_ENABLED` 已启用；独立安装结果见 [验证记录](validation.md)。
+
 ## PyPI Trusted Publisher
 
 在 PyPI 的 Account → Publishing 中登记 GitHub pending publisher：
@@ -22,7 +24,7 @@ GitHub 仓库：<https://github.com/Matthew-ymz/EID>。
 
 项目名称只有在首次成功上传后才在 PyPI 创建，pending publisher 本身不预留包名。
 
-PyPI 拒绝了最初的发行名 `eid`，原因是与已有项目名称过于相似。后续使用 `eid-toolbox`；该名称是否可注册，以 PyPI 提交结果为准。已发布的 GitHub `v0.1.0` 保留原状，名称修订采用 `0.1.1`。
+PyPI 拒绝了最初的发行名 `eid`，原因是与已有项目名称过于相似。`eid-toolbox` 已通过登记并成功发布。已发布的 GitHub `v0.1.0` 保留原状，名称修订采用 `0.1.1`。
 
 ## 每次发布
 

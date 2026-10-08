@@ -9,6 +9,12 @@
 需要 Python 3.10 或以上。基础依赖只有 NumPy 和 SciPy。
 
 ```bash
+python -m pip install eid-toolbox
+```
+
+从源码安装时：
+
+```bash
 git clone https://github.com/Matthew-ymz/EID.git
 cd EID
 python -m pip install .
@@ -24,7 +30,7 @@ python -m build
 
 安装后无需 EISyn 的源码、数据目录、模型权重或运行环境。
 
-发布到 PyPI 后可使用 `python -m pip install eid-toolbox`，代码使用 `import eid`。实际发布状态以 [PyPI 项目页](https://pypi.org/project/eid-toolbox/) 为准。`eid` 作为 PyPI 发行名被平台的相似名称规则拒绝，工具箱的项目名和 Python 导入名仍为 EID / `eid`。
+[`eid-toolbox 0.1.1`](https://pypi.org/project/eid-toolbox/0.1.1/) 已发布到 PyPI，代码使用 `import eid`。需要固定当前版本时，使用 `python -m pip install eid-toolbox==0.1.1`。`eid` 作为 PyPI 发行名被平台的相似名称规则拒绝，工具箱的项目名和 Python 导入名仍为 EID / `eid`。
 
 ## 当前可用入口
 
@@ -131,12 +137,12 @@ python -m pytest
 
 测试包括解析 XOR、单源 COPY、单位转换、多步转移、非连续源索引、模型适配一致性、SPT 闭合和非负性失败，以及从 EISyn 迁移的 TM/SPT 回归测试。
 
-本次 macOS / Python 3.11 的 39 项测试、三个示例、安装与构建已通过，记录见 [本地验证](docs/validation.md)。
+本次 macOS / Python 3.11 的 39 项测试、三个示例、安装与构建已通过。从 PyPI 安装到独立环境后的三个示例也已通过，记录见 [验证记录](https://github.com/Matthew-ymz/EID/blob/main/docs/validation.md)。
 
 ## 维护与来源
 
-来源文件、内容哈希和抽取时的 EISyn 提交见 [迁移清单](docs/source_manifest.json)。方法核对范围、估计器差异和当前未覆盖功能见 [方法与迁移说明](docs/method_contract.md)。后续范围见 [路线图](docs/roadmap.md)。
+来源文件、内容哈希和抽取时的 EISyn 提交见 [迁移清单](https://github.com/Matthew-ymz/EID/blob/main/docs/source_manifest.json)。方法核对范围、估计器差异和当前未覆盖功能见 [方法与迁移说明](https://github.com/Matthew-ymz/EID/blob/main/docs/method_contract.md)。后续范围见 [路线图](https://github.com/Matthew-ymz/EID/blob/main/docs/roadmap.md)。
 
 大型数据、模型权重、领域实验、论文图表与研究日志继续由 EISyn 维护。核心代码后续以本工具箱为维护入口，论文复现项目在迁移后固定调用具体版本。
 
-本项目采用 [MIT License](LICENSE)，许可证由用户在首次公开发布时指定。发布流程见 [发布说明](docs/publishing.md)。
+本项目采用 [MIT License](https://github.com/Matthew-ymz/EID/blob/main/LICENSE)。发布流程见 [发布说明](https://github.com/Matthew-ymz/EID/blob/main/docs/publishing.md)。
