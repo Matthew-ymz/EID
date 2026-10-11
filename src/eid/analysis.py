@@ -11,8 +11,11 @@ from typing import Any
 import numpy as np
 
 from .discrete import _validate_system_tpm, discrete_effective_information
-from .estimators.transport_map import estimate_mutual_information_transport_map
-from .interventions import UniformBox
+from .estimators.analytic import dynamics_jacobian, linear_gaussian_ei
+from .estimators.api import check_intervention, sample_evaluator
+from .estimators.api import source_groups as _source_groups
+from .estimators.core import EstimatorConfig, covariance, json_safe, resolve_config, samples
+from .interventions import IndependentEmpirical, IndependentGaussian, UniformBox
 from .spt import (
     SPTAudit,
     SPTConfig,
@@ -30,11 +33,23 @@ def _unit_factor(unit: str) -> float:
     return math.log(2.0) if unit == "nats" else 1.0
 
 
+def _analysis_options(unit, syn_tolerance, exact_max_size):
+    _unit_factor(unit)
+    if not math.isfinite(syn_tolerance) or syn_tolerance < 0:
+        raise ValueError("syn_tolerance must be finite and nonnegative in the declared unit.")
+    if (
+        isinstance(exact_max_size, bool)
+        or not isinstance(exact_max_size, (int, np.integer))
+        or exact_max_size < 2
+    ):
+        raise ValueError("exact_max_size must be an integer >= 2.")
+
+
 def _indices(values: Sequence[int] | None, dimension: int, name: str) -> tuple[int, ...]:
     if values is None:
         return tuple(range(dimension))
     raw = tuple(values)
-    if any(not isinstance(value, (int, np.integer)) for value in raw):
+    if any(isinstance(value, bool) or not isinstance(value, (int, np.integer)) for value in raw):
         raise ValueError(f"{name} must contain integer indices.")
     indices = tuple(sorted(map(int, raw)))
     if not indices or len(set(indices)) != len(indices):
@@ -78,8 +93,8 @@ class AnalysisResult:
                 "audit": self.diagnostics["spt_audit"],
                 "closure_error": self.tree.closure_error,
             },
-            "diagnostics": self.diagnostics,
-            "metadata": self.metadata,
+            "diagnostics": json_safe(self.diagnostics),
+            "metadata": json_safe(self.metadata),
         }
 
 
@@ -130,11 +145,7 @@ def _analyze(
     exact_max_size: int,
     metadata: dict[str, Any],
 ) -> AnalysisResult:
-    _unit_factor(unit)
-    if not math.isfinite(syn_tolerance) or syn_tolerance < 0:
-        raise ValueError("syn_tolerance must be finite and nonnegative in the declared unit.")
-    if not isinstance(exact_max_size, (int, np.integer)) or exact_max_size < 2:
-        raise ValueError("exact_max_size must be an integer >= 2.")
+    _analysis_options(unit, syn_tolerance, exact_max_size)
     oracle = _EIOracle(evaluator, sources, syn_tolerance)
     singles = {source: oracle.ei((source,)) for source in sources}
     overall = oracle.ei(sources)
@@ -204,13 +215,17 @@ def analyze_tpm(
     horizon: int = 1,
     unit: str = "nats",
     exact_max_size: int = 8,
+    estimator: str | EstimatorConfig = "discrete",
 ) -> AnalysisResult:
     """Analyze a full binary-state TPM under independent uniform interventions.
 
     Rows and columns use lexicographically ordered binary states. The l-step
     kernel is formed before marginalization, so every EI shares one protocol.
     """
-    _unit_factor(unit)
+    _analysis_options(unit, syn_tolerance, exact_max_size)
+    config = resolve_config(estimator)
+    if config.method != "discrete" or config.options:
+        raise ValueError("analyze_tpm requires estimator='discrete' without estimator options.")
     if not isinstance(n_nodes, (int, np.integer)) or n_nodes < 1:
         raise ValueError("n_nodes must be an integer >= 1.")
     if not isinstance(horizon, (int, np.integer)) or horizon < 1:
@@ -241,6 +256,7 @@ def analyze_tpm(
             "horizon": int(horizon),
             "intervention": "independent-uniform-binary",
             "estimator": "exact-discrete",
+            "estimator_method": "discrete",
             "source_dimension": int(n_nodes),
         },
     )
@@ -249,8 +265,9 @@ def analyze_tpm(
 def analyze_dynamics(
     dynamics: Callable[[np.ndarray], np.ndarray],
     *,
-    intervention: UniformBox,
-    response_noise_std: float | Sequence[float],
+    intervention: UniformBox | IndependentGaussian | IndependentEmpirical,
+    response_noise_std: float | Sequence[float] | None = None,
+    response_noise_cov: np.ndarray | None = None,
     syn_tolerance: float,
     sources: Sequence[int] | None = None,
     targets: Sequence[int] | None = None,
@@ -260,15 +277,55 @@ def analyze_dynamics(
     joint_order: str = "source_first",
     unit: str = "nats",
     exact_max_size: int = 8,
+    estimator: str | EstimatorConfig = "tm_polynomial",
+    estimator_options: dict[str, Any] | None = None,
+    train_fraction: float = 1.0,
+    source_groups: Sequence[Sequence[int]] | None = None,
+    source_transforms: Sequence[Callable | None] | None = None,
 ) -> AnalysisResult:
-    """Analyze a batch response function with the polynomial triangular TM.
+    """Analyze a batch response function with an explicitly selected EI backend.
 
     The function supplies the complete requested time-horizon response. This
     adapter does not integrate an ODE or iterate a one-step map automatically.
-    Independent additive Gaussian response noise is specified explicitly.
+    Independent or correlated additive Gaussian response noise is explicit.
     All subsets use marginals of the same full-source intervention ensemble.
     """
-    factor = _unit_factor(unit)
+    _analysis_options(unit, syn_tolerance, exact_max_size)
+    config = resolve_config(estimator, estimator_options)
+    check_intervention(intervention, getattr(intervention, "dimension", 0))
+    if config.method == "nis":
+        raise ValueError(
+            "NIS cannot provide general subset EI/SPT. Use estimate_ei(dynamics, estimator='nis')."
+        )
+    if config.method == "local_gaussian":
+        if source_transforms is not None or train_fraction != 1:
+            raise ValueError("Local Gaussian analysis operates on the raw local linear channel.")
+        if not isinstance(intervention, IndependentGaussian):
+            raise ValueError("local_gaussian requires IndependentGaussian perturbations.")
+        options = dict(config.options)
+        center = np.asarray(options.pop("center", intervention.mean), dtype=float)
+        if center.shape != (intervention.dimension,) or not np.isfinite(center).all():
+            raise ValueError("center must be finite and match intervention dimension.")
+        jacobian = dynamics_jacobian(dynamics, center[None], **options)[0]
+        noise = _response_covariance(jacobian.shape[0], response_noise_std, response_noise_cov)
+        result = analyze_linear_gaussian(
+            jacobian,
+            response_noise_cov=noise,
+            intervention=intervention,
+            sources=sources,
+            targets=targets,
+            source_groups=source_groups,
+            syn_tolerance=syn_tolerance,
+            unit=unit,
+            exact_max_size=exact_max_size,
+        )
+        result.metadata.update(
+            estimator="local_gaussian",
+            estimator_method="local_gaussian",
+            center=center.tolist(),
+            approximation="Jacobian at center, local Gaussian channel",
+        )
+        return result
     rng = np.random.default_rng(seed)
     x = intervention.sample(sample_count, rng)
     y = np.asarray(dynamics(x), dtype=float)
@@ -276,8 +333,52 @@ def analyze_dynamics(
         y = y[:, None]
     if y.ndim != 2 or y.shape[0] != sample_count or y.shape[1] < 1 or not np.isfinite(y).all():
         raise ValueError("dynamics must return finite responses with shape [sample_count, output_dimension].")
+    noise = _response_covariance(y.shape[1], response_noise_std, response_noise_cov)
+    if response_noise_cov is None:
+        y = y + rng.normal(size=y.shape) * np.sqrt(np.diag(noise))
+    else:
+        y = y + rng.multivariate_normal(np.zeros(y.shape[1]), noise, size=sample_count)
+    # Backward-compatible polynomial settings; explicit backend options take precedence.
+    if config.method == "tm_polynomial":
+        config = EstimatorConfig(
+            config.method, {"degree": degree, "joint_order": joint_order, **config.options}
+        )
+    result = analyze_samples(
+        x,
+        y,
+        intervention=intervention,
+        sources=sources,
+        targets=targets,
+        estimator=config,
+        source_groups=source_groups,
+        source_transforms=source_transforms,
+        train_fraction=train_fraction,
+        seed=seed,
+        syn_tolerance=syn_tolerance,
+        unit=unit,
+        exact_max_size=exact_max_size,
+    )
+    result.metadata.update(
+        system_kind="batch-response",
+        seed=int(seed),
+        response_noise="independent-additive-gaussian"
+        if np.array_equal(noise, np.diag(np.diag(noise)))
+        else "correlated-additive-gaussian",
+        response_noise_cov=noise.tolist(),
+        time_horizon="defined-by-response-function",
+    )
+    if response_noise_std is not None:
+        result.metadata["response_noise_std"] = np.sqrt(np.diag(noise)).tolist()
+    return result
+
+
+def _response_covariance(dimension, response_noise_std, response_noise_cov):
+    if (response_noise_std is None) == (response_noise_cov is None):
+        raise ValueError("Specify exactly one of response_noise_std or response_noise_cov.")
+    if response_noise_cov is not None:
+        return covariance(response_noise_cov, dimension, "response_noise_cov")
     noise = np.asarray(response_noise_std, dtype=float)
-    if noise.ndim > 1 or (noise.ndim == 1 and noise.shape != (y.shape[1],)):
+    if noise.ndim > 1 or (noise.ndim == 1 and noise.shape != (dimension,)):
         raise ValueError("response_noise_std must be scalar or contain one value per output coordinate.")
     if not np.isfinite(noise).all() or np.any(noise < 0):
         raise ValueError("response_noise_std must be finite and nonnegative.")
@@ -286,35 +387,77 @@ def analyze_dynamics(
             "This continuous adapter requires positive response noise. Use an explicit noisy "
             "measurement channel; a deterministic continuous response can have singular density."
         )
-    y = y + rng.normal(size=y.shape) * noise
-    source_indices = _indices(sources, x.shape[1], "sources")
+    return covariance(np.diag(np.broadcast_to(noise, (dimension,)) ** 2), dimension, "response_noise_cov")
+
+
+def analyze_samples(
+    x,
+    y,
+    *,
+    intervention,
+    syn_tolerance: float,
+    estimator: str | EstimatorConfig = "tm_polynomial",
+    estimator_options=None,
+    sources=None,
+    targets=None,
+    source_groups=None,
+    source_transforms=None,
+    train_fraction=1.0,
+    seed=0,
+    unit="nats",
+    exact_max_size=8,
+) -> AnalysisResult:
+    """Analyze a complete paired intervention ensemble (including simulator process noise).
+
+    The caller declares how inputs were intervened on. Observational samples do
+    not become causal merely by supplying a distribution object. source_groups
+    partition raw input coordinates into independent players; source_transforms
+    act on each player separately. Targets, samples and fitting split stay fixed.
+    """
+    _analysis_options(unit, syn_tolerance, exact_max_size)
+    config = resolve_config(estimator, estimator_options)
+    x, y = samples(x, "x"), samples(y, "y")
+    if len(x) != len(y):
+        raise ValueError("x and y must have matching sample counts.")
+    if source_groups is None:
+        source_groups = getattr(intervention, "source_groups", None)
+    groups = _source_groups(x.shape[1], source_groups)
+    check_intervention(intervention, x.shape[1], groups)
+    source_indices = _indices(sources, len(groups), "sources")
     target_indices = _indices(targets, y.shape[1], "targets")
-
-    def evaluator(coalition):
-        estimate = estimate_mutual_information_transport_map(
-            x[:, coalition], y[:, target_indices], degree=degree, joint_order=joint_order
-        )
-        return float(estimate["mi_hat"]) * factor
-
+    evaluator, detail = sample_evaluator(
+        x,
+        y[:, target_indices],
+        intervention,
+        groups,
+        config,
+        unit=unit,
+        train_fraction=train_fraction,
+        seed=seed,
+        source_transforms=source_transforms,
+    )
     metadata = {
-        "system_kind": "batch-response",
-        "intervention": "independent-uniform-box",
-        "bounds": [list(bound) for bound in intervention.bounds],
-        "sample_count": int(sample_count),
-        "seed": int(seed),
+        "system_kind": "intervention-samples",
+        **intervention.metadata(),
         "source_dimension": x.shape[1],
         "target_dimension": y.shape[1],
-        "response_noise_std": np.broadcast_to(noise, (y.shape[1],)).tolist(),
-        "response_noise": "independent-additive-gaussian",
-        "time_horizon": "defined-by-response-function",
-        "estimator": f"polynomial_triangular_transport_map_degree_{degree}",
-        "joint_order": joint_order,
-        "bias_correction": "none",
-        "residual_min_scale": 1e-8,
-        "regression_ridge": 1e-6,
-        "density_fit_and_evaluation": "same-intervention-ensemble",
+        "sample_count": len(x),
+        "source_groups": [list(g) for g in groups],
+        "estimator_method": config.method,
+        "estimator_options": json_safe(config.options),
+        "estimator": config.method,
+        **json_safe(detail["protocol"]),
     }
-    return _analyze(
+    if config.method == "tm_polynomial":
+        degree = config.options.get("degree", 3)
+        metadata.update(
+            estimator=f"polynomial_triangular_transport_map_degree_{degree}",
+            joint_order=config.options.get("joint_order", "source_first"),
+            bias_correction="none",
+            residual_min_scale=config.options.get("min_scale", 1e-8),
+            regression_ridge=config.options.get("ridge", 1e-6),
+        )
+    result = _analyze(
         evaluator,
         sources=source_indices,
         targets=target_indices,
@@ -323,6 +466,65 @@ def analyze_dynamics(
         exact_max_size=exact_max_size,
         metadata=metadata,
     )
+    result.diagnostics["estimates"] = json_safe(list(detail["estimates"].values()))
+    return result
+
+
+def analyze_linear_gaussian(
+    coupling,
+    *,
+    intervention: IndependentGaussian,
+    response_noise_cov,
+    syn_tolerance,
+    sources=None,
+    targets=None,
+    source_groups=None,
+    unit="nats",
+    exact_max_size=8,
+) -> AnalysisResult:
+    """Exact rectangular linear Gaussian channel, including omitted-source marginalization."""
+    _analysis_options(unit, syn_tolerance, exact_max_size)
+    if not isinstance(intervention, IndependentGaussian):
+        raise TypeError("Exact linear Gaussian EI requires IndependentGaussian input.")
+    a = np.asarray(coupling, dtype=float)
+    if a.ndim != 2 or a.shape[1] != intervention.dimension:
+        raise ValueError("coupling columns must match intervention dimension.")
+    noise = covariance(response_noise_cov, a.shape[0], "response_noise_cov")
+    groups = _source_groups(a.shape[1], source_groups)
+    si, ti = _indices(sources, len(groups), "sources"), _indices(targets, a.shape[0], "targets")
+    records = []
+
+    def evaluator(coalition):
+        columns = [i for g in coalition for i in groups[g]]
+        result = linear_gaussian_ei(
+            a, noise, np.asarray(intervention.std) ** 2, sources=columns, targets=ti, unit=unit
+        )
+        records.append({"sources": list(coalition), **result.to_dict()})
+        return result.value
+
+    result = _analyze(
+        evaluator,
+        sources=si,
+        targets=ti,
+        unit=unit,
+        syn_tolerance=syn_tolerance,
+        exact_max_size=exact_max_size,
+        metadata={
+            "system_kind": "linear-gaussian-channel",
+            **intervention.metadata(),
+            "estimator": "linear_gaussian",
+            "estimator_method": "linear_gaussian",
+            "source_groups": [list(g) for g in groups],
+            "coupling": a.tolist(),
+            "response_noise_cov": noise.tolist(),
+            "source_dimension": a.shape[1],
+            "target_dimension": a.shape[0],
+            "time_horizon": "encoded-by-coupling",
+            "approximation": "none",
+        },
+    )
+    result.diagnostics["estimates"] = records
+    return result
 
 
 def analyze_model(model: Any, **kwargs: Any) -> AnalysisResult:

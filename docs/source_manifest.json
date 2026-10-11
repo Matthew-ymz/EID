@@ -74,5 +74,59 @@
     "src/eid/__init__.py",
     "src/eid/analysis.py",
     "src/eid/interventions.py"
-  ]
+  ],
+  "extensions": {
+    "added_on": "2026-10-11",
+    "version": "0.2.0",
+    "implementation": "Independent toolbox implementation; original extraction records remain historical.",
+    "manuscript_parent": "P6UJCVG8",
+    "manuscript_attachments": [
+      "DXGC7JEA",
+      "MWIWKSVG"
+    ],
+    "manuscript_version": "not explicitly dated or versioned; current sole attachment pair, not a certified latest draft",
+    "indexed_fulltext_sha256": {
+      "DXGC7JEA": "6569d66363e657e365a6154e4ece914a215671eb8d37adf9abff8cc23ad7dce6",
+      "MWIWKSVG": "ca20b7d748dc371a7b957230e187d7b3ff6d0ac0aac65d4d32cff71f3ba1528b"
+    },
+    "methods": [
+      "discrete",
+      "tm_polynomial",
+      "tm_affine",
+      "tm_affine_lifted",
+      "tm_affine_readout",
+      "tm_neural",
+      "gaussian",
+      "kde",
+      "ksg",
+      "linear_gaussian",
+      "local_gaussian",
+      "nis"
+    ],
+    "new_runtime_files": [
+      "src/eid/estimators/core.py",
+      "src/eid/estimators/sample.py",
+      "src/eid/estimators/analytic.py",
+      "src/eid/estimators/neural.py",
+      "src/eid/estimators/api.py",
+      "src/eid/estimators/readout.py"
+    ],
+    "method_references": [
+      "docs/method_contract.md",
+      "docs/estimators.md"
+    ],
+    "additional_primary_references": {
+      "nis": "https://arxiv.org/html/2201.10154v2",
+      "ksg": "https://arxiv.org/html/cond-mat/0305641v1"
+    },
+    "local_implementation_crosschecks": [
+      "EISyn/yrd/__init__.py: affine feature lifts, correction and restricted NIS diagnostics",
+      "EISyn/scripts/validate_mixed_order_kuramoto_hierarchy.py: conditional neural flow/context selection",
+      "EISyn/scripts/run_mixed_order_kuramoto_kout_main.py: shared marginal integration and explicit component composition",
+      "EISyn/scripts/unicm_peid_syn_analysis.py: Gaussian logdet protocol",
+      "EISyn/scripts/compute_nyc_taxi_mgstn_ei.py: local Gaussian covariance protocol",
+      "EISyn/scripts/compute_unicm_order_syn.py: known product-prior moments, shared full-input affine readout and trace-scaled residual ridge",
+      "EISyn/scripts/analyze_unicm_11mode_shapley.py: standardized affine readout and unit source covariance"
+    ]
+  }
 }

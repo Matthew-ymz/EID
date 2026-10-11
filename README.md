@@ -2,7 +2,7 @@
 
 从 [EISyn](https://github.com/Matthew-ymz/EISyn) 抽取的独立 Python 工具库，用于有效信息（EI）、整合有效信息（Ξ）和 Synergy Partition Tree（SPT）分析。
 
-当前版本为 `0.1.1`，处于 Alpha 阶段。发行包名为 `eid-toolbox`，导入名为 `eid`。源码仓库：[Matthew-ymz/EID](https://github.com/Matthew-ymz/EID)。
+当前源码版本为 `0.2.0`，处于 Alpha 阶段。发行包名为 `eid-toolbox`，导入名为 `eid`。源码仓库：[Matthew-ymz/EID](https://github.com/Matthew-ymz/EID)。源码安装与历史发行版本的安装方式见下文。
 
 ## 安装
 
@@ -30,17 +30,40 @@ python -m build
 
 安装后无需 EISyn 的源码、数据目录、模型权重或运行环境。
 
-[`eid-toolbox 0.1.1`](https://pypi.org/project/eid-toolbox/0.1.1/) 已发布到 PyPI，代码使用 `import eid`。需要固定当前版本时，使用 `python -m pip install eid-toolbox==0.1.1`。`eid` 作为 PyPI 发行名被平台的相似名称规则拒绝，工具箱的项目名和 Python 导入名仍为 EID / `eid`。
+首次发布的历史版本为 [`eid-toolbox 0.1.1`](https://pypi.org/project/eid-toolbox/0.1.1/)，代码使用 `import eid`。体验本次 `0.2.0` 升级请从当前源码安装。`eid` 作为 PyPI 发行名被平台的相似名称规则拒绝，工具箱的项目名和 Python 导入名仍为 EID / `eid`。
 
 ## 当前可用入口
 
 | 入口 | 输入 | 计算方式 |
 |---|---|---|
 | `analyze_tpm` | 完整二进制状态转移矩阵 | 独立均匀干预，精确离散 EI，可指定预测步数 |
-| `analyze_dynamics` | 批量响应函数 | 明确的独立均匀区间干预、响应噪声、多项式三角 TM |
+| `analyze_dynamics` | 批量响应函数 | 显式干预与响应噪声，可选择样本估计器或局部高斯通道 |
 | `analyze_model` | 已训练且具有 `predict(X)` 的模型 | 对学习模型施加同一干预，调用连续分析入口 |
+| `analyze_samples` | 完整的输入—响应干预样本 | 可切换估计器、源分组、固定表征与留出密度评估 |
+| `analyze_linear_gaussian` | 线性矩阵、独立高斯输入、噪声协方差 | 解析 EI，包含遗漏源边缘化 |
 
-三个入口返回 `AnalysisResult`，包含整体 EI、Ξ、单源 EI、已查询的子集 EI、SPT、数值诊断和配置。`result.to_dict()` 可以导出为 JSON。
+分析入口返回 `AnalysisResult`，包含整体 EI、Ξ、单源 EI、已查询的子集 EI、SPT、数值诊断和配置。`result.to_dict()` 可以导出为 JSON。单次 `estimate_ei` 和观测 `estimate_mi` 返回声明单位的 `InformationEstimate`。
+
+### 切换 EI 计算方式
+
+```python
+from eid import EstimatorConfig, UniformBox, analyze_dynamics, available_estimators
+
+result = analyze_dynamics(
+    lambda x: x[:, 0] * x[:, 1],
+    intervention=UniformBox([[-1, 1], [-1, 1]]),
+    response_noise_std=0.3, syn_tolerance=0.03,
+    estimator=EstimatorConfig("tm_affine_lifted", {"bias_correction": True}),
+)
+print(result.ei, result.xi, result.metadata["estimator_method"])
+print(available_estimators())
+```
+
+可选方法：`discrete`、`tm_polynomial`（`tm`）、`tm_affine`、`tm_affine_lifted`、
+`tm_affine_readout`、`tm_neural`、`gaussian`、`kde`、`ksg`（`knn`）、`linear_gaussian`、`local_gaussian`、`nis`。
+不同方法有明确的适用入口；NIS 近似不能直接用于任意子集的 Ξ／SPT。
+神经 TM 可用 `python -m pip install -e '.[neural]'` 安装可选依赖。
+详见 [后端参数、示例与适用边界](docs/estimators.md) 和 [手稿方法覆盖表](docs/method_contract.md)。
 
 ### 离散 XOR
 
@@ -76,7 +99,7 @@ print(result.xi, result.unit)
 
 响应函数接收 `[样本数, 输入维度]` 数组，返回同样样本数的目标。函数应提供所需时间间隔的完整响应；当前入口不自动积分 ODE，也不自动迭代连续映射。调用方可在函数内完成这些操作。
 
-所有 EI 项使用同一批完整输入与响应样本。`response_noise_std` 是用户显式指定的独立高斯响应噪声，可以为标量或逐目标标准差；这是分析通道的一部分，必须有物理、测量或模型误差依据。当前连续入口要求正噪声，不自动用噪声下限替代确定性通道。真实过程噪声可由模拟器自行产生，但适配器的附加响应噪声仍需明确指定。
+所有 EI 项使用同一批完整输入与响应样本。`response_noise_std` 是用户显式指定的独立高斯响应噪声，可以为标量或逐目标标准差；也可改用 `response_noise_cov` 指定相关的正定噪声协方差。噪声是分析通道的一部分，必须有物理、测量或模型误差依据。`analyze_dynamics` 要求显式正噪声，不自动设置物理噪声下限。模拟器已有完整过程／测量噪声时，可生成干预输入和响应后调用 `analyze_samples`。
 
 ### 数据驱动模型
 
@@ -119,10 +142,11 @@ result = analyze_model(
 
 - `eid.discrete`：离散 TPM、源/目标边缘化、布尔 TPM 构建、粗粒化辅助函数。
 - `eid.estimators.transport_map`：仿射、多项式三角密度模型及 MI 估计。
+- `eid.estimators`：统一 `estimate_ei`／`estimate_mi`、配置与后端列表；神经依赖按需加载。
 - `eid.spt`：统一 SPT 构建、非负性检查、精确/谱/分层随机候选。
 - `eid.compat`：抽取时保留的历史 Phi 命名适配层。
 
-底层 TM 的 `mi_hat` 和 specific-MI 返回 bits，并带有单位字段；连续公共入口负责转换。仿射密度模型存在，但公共连续入口目前使用多项式三角 TM，不等同于补充材料 S1.2 的仿射加特征提升估计器。
+旧底层 TM 的 `mi_hat` 和 specific-MI 返回 bits，并带有单位字段；连续公共入口负责转换。新的统一估计接口默认 nats。连续分析默认使用多项式 TM；`tm_affine_lifted` 单独实现补充材料 S1.2 的仿射加特征提升和偏差校正协议，两者不能混称。
 
 复制的 SPT 还保留历史 `SIGNED` 诊断策略和非标准归一化目标，仅用于检查历史结果，不作为本项目公共 PEID 分析协议。历史 `xi_bits` / `syn_bits` 别名不能用于判断单位；使用 `xi_value` / `syn_value` 和外层声明的单位。
 
@@ -131,7 +155,11 @@ result = analyze_model(
 完整功能总览：[Feature overview notebook](examples/1_feature_overview/example.ipynb)。
 仿照 PySINDy 的分节教程，包含全部公共分析入口、底层工具与原有三个示例，
 并展示布尔系统、随机转移、非线性映射、振子、Lorenz 流和学习模型。
-图表输出已保存在 notebook 中，参数附有简短英文说明。
+第 8 节展示六种布尔系统的原始响应网络，标注逻辑门、共享输入、选择条件及更新规则，
+可与随后同名的 SPT 对照；提供 PNG 与可编辑 draw.io 图源。
+图表输出已保存在 notebook 中。第 13 节用六个合成通道、五组图对比十二个 EI 后端的
+精度、Syn、耗时、样本/维数敏感性和适用条件；附中文解读、独立解析/积分参考与原始数值审计。
+可选神经 TM 图行需要安装 `.[notebooks,neural]`。
 
 从仓库根目录安装并打开：
 
@@ -144,12 +172,14 @@ python -m jupyter lab examples/1_feature_overview/example.ipynb
 python examples/discrete_xor.py
 python examples/known_dynamics.py
 python examples/learned_model.py
+python examples/estimator_switching.py
+python examples/estimator_switching.py --neural  # 需要可选依赖
 python -m pytest
 ```
 
 测试包括解析 XOR、单源 COPY、单位转换、多步转移、非连续源索引、模型适配一致性、SPT 闭合和非负性失败，以及从 EISyn 迁移的 TM/SPT 回归测试。
 
-本次 macOS / Python 3.11 的 39 项测试、三个示例、安装与构建已通过。从 PyPI 安装到独立环境后的三个示例也已通过，记录见 [验证记录](https://github.com/Matthew-ymz/EID/blob/main/docs/validation.md)。
+0.2.0 的本地测试、后端切换示例和安装检查见 [验证记录](docs/validation.md)。此前发布的 0.1.1 已完成 PyPI 独立安装验证；0.2.0 当前通过源码安装。
 
 ## 维护与来源
 
