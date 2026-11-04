@@ -1,0 +1,12 @@
+# 500 × 500 observational mutual-information cross-check
+
+Exploratory, budgeted pilot, authorized 2026-10-30. Unit: bits. No intervention, EI or Syn.
+
+Compare two paired-sample estimators on identical data: the package affine Gaussian transport-map density ratio (same-sample and independent held-out, explicitly regularized), and a reconstruction of Abdelaleem et al. (2026), arXiv:2506.00330v3, separable InfoNCE with max-validation stopping and subsampling/extrapolation. The paper does not supply code here; implementation differences and diagnostics are recorded. Published batch cap applies only to unextrapolated InfoNCE, not its extrapolated output. A separately held-out evaluation is retained in addition to the paper's training estimate.
+
+Synthetic: 10 correlated standard-normal pairs, rho=sqrt(1-2^(-2*4/10)); separate fixed nonlinear feature maps give 500 dimensions per side. First 20 features are softplus(z), softplus(-z), so z is exactly recovered by subtraction and the total MI is provably 4 bits. Remaining 480 features are softplus of random Gaussian projections. This structured 500-feature teacher is not the paper's exact 1024-hidden-unit network; it is a comparable, explicitly injective construction. The distributions are singular in 500 dimensions; the Gaussian TM adds a declared ridge and estimates a regularized approximation. Independent latent pairs give MI zero. A distinct 1024-hidden-layer teacher without guaranteed invertibility would not justify claiming 4-bit truth. Evaluation uses fresh draws from the same maps.
+
+
+Use same-sample TM and held-out TM for jitters 0.01 and 0.1; retain raw negative and failed estimates. For InfoNCE record train, validation, independent test, saturation, gamma curve, delta, and tentative extrapolation; if samples or diagnostics fail the paper's requirements flag unreliable, never silently adjust. Compare in-sample versus held-out evaluations as distinct protocols. Estimate uncertainty from independent data seeds. Fixed budget maximum 1800 seconds, stop cleanly and retain completed results. Pilot has small seed counts and is not a general ranking. Nothing in this project validates nonlinear TM here; affine TM is the usual Gaussian TM and its actual limitation is part of the comparison.
+
+Run `python experiments/mi_synthetic_double_check/synthetic_mi.py --smoke` with PyTorch installed. Omit `--smoke` for the full synthetic pilot. The results file is created once per run.

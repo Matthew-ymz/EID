@@ -1,0 +1,15 @@
+{"event": "validation_point", "mode": "EI", "method": "full_corrected", "dimension": 100, "sample_count": 4096, "is_selected_frontier": true, "completed": 1, "total": 14}
+{"event": "validation_point", "mode": "EI", "method": "structured", "dimension": 100, "sample_count": 256, "is_selected_frontier": true, "completed": 2, "total": 14}
+{"event": "validation_point", "mode": "EI", "method": "structured", "dimension": 100, "sample_count": 512, "is_selected_frontier": false, "completed": 3, "total": 14}
+{"event": "validation_point", "mode": "EI", "method": "structured", "dimension": 500, "sample_count": 512, "is_selected_frontier": true, "completed": 4, "total": 14}
+{"event": "validation_point", "mode": "EI", "method": "structured", "dimension": 500, "sample_count": 1024, "is_selected_frontier": false, "completed": 5, "total": 14}
+{"event": "validation_point", "mode": "EI", "method": "structured", "dimension": 1000, "sample_count": 1024, "is_selected_frontier": true, "completed": 6, "total": 14}
+{"event": "validation_point", "mode": "EI", "method": "structured", "dimension": 1000, "sample_count": 2048, "is_selected_frontier": false, "completed": 7, "total": 14}
+{"event": "validation_point", "mode": "MI", "method": "full_corrected", "dimension": 100, "sample_count": 4096, "is_selected_frontier": true, "completed": 8, "total": 14}
+{"event": "validation_point", "mode": "MI", "method": "structured", "dimension": 100, "sample_count": 512, "is_selected_frontier": true, "completed": 9, "total": 14}
+{"event": "validation_point", "mode": "MI", "method": "structured", "dimension": 100, "sample_count": 1024, "is_selected_frontier": false, "completed": 10, "total": 14}
+{"event": "validation_point", "mode": "MI", "method": "structured", "dimension": 500, "sample_count": 2048, "is_selected_frontier": true, "completed": 11, "total": 14}
+{"event": "validation_point", "mode": "MI", "method": "structured", "dimension": 500, "sample_count": 4096, "is_selected_frontier": false, "completed": 12, "total": 14}
+{"event": "validation_point", "mode": "MI", "method": "structured", "dimension": 1000, "sample_count": 2048, "is_selected_frontier": true, "completed": 13, "total": 14}
+{"event": "validation_point", "mode": "MI", "method": "structured", "dimension": 1000, "sample_count": 4096, "is_selected_frontier": false, "completed": 14, "total": 14}
+{"event": "validation_complete", "status": "complete", "points": 14, "seconds": 265.4655010830611}

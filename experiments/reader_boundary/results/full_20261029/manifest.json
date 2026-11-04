@@ -1,0 +1,140 @@
+{
+  "config": {
+    "version": "fixed-weight-reader-v1",
+    "dimensions": [
+      2,
+      5,
+      10,
+      20,
+      50,
+      100,
+      200,
+      500,
+      1000
+    ],
+    "sample_sizes": [
+      64,
+      128,
+      256,
+      512,
+      1024,
+      2048,
+      4096
+    ],
+    "repeats": 20,
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "modes": [
+      "EI",
+      "MI"
+    ],
+    "families": [
+      "null",
+      "diagonal",
+      "dense"
+    ],
+    "weights": "fixed equal",
+    "ridge": 0.01,
+    "source_block_size": 5,
+    "source_block_correlation": 0.6,
+    "ksg_k": 3,
+    "ksg_dimensions": [
+      2,
+      5,
+      10,
+      20
+    ],
+    "ksg_sample_sizes": [
+      64,
+      128,
+      256,
+      512,
+      1024,
+      2048,
+      4096
+    ],
+    "nonlinear": true,
+    "nonlinear_dimensions": [
+      2,
+      10,
+      50
+    ],
+    "nonlinear_sample_sizes": [
+      256,
+      1024,
+      4096
+    ],
+    "strict_null_tolerance_nats": 0.05,
+    "signal_relative_tolerance": 0.1,
+    "normalized_null_tolerance_per_dimension_nats": 0.01,
+    "empirical_cell_pass_fraction": 0.9,
+    "budget_seconds": 1800,
+    "unit": "nats",
+    "null_subtraction": false,
+    "clipping": false
+  },
+  "fingerprint": "817848806af1d9bf425491f51b6e73b506b445020eb974dce0c9c5fa16ffed28",
+  "started_utc": "2026-10-28T23:42:04.388602+00:00",
+  "status": "complete",
+  "runtime": {
+    "python": "3.11.8 | packaged by conda-forge | (main, Feb 16 2024, 20:49:36) [Clang 16.0.6 ]",
+    "numpy": "1.26.4",
+    "scipy": "1.11.4",
+    "platform": "macOS-26.6.2-arm64-arm-64bit"
+  },
+  "completed_cells": 72,
+  "nonlinear_reference": {
+    "per_pair_nats": 0.7331789998363317,
+    "coarse": {
+      "ei_nats": 0.7331790279637546,
+      "h_response": 1.458970380608482,
+      "h_noise": 0.7257913526447274,
+      "step": 0.005,
+      "n_grid": 131072,
+      "scale": 1.0,
+      "noise_sd": 0.5,
+      "mass_check": 0.9999984589260295,
+      "estimator": "inverse FFT of the product-channel characteristic function"
+    },
+    "fine": {
+      "ei_nats": 0.7331789998363317,
+      "h_response": 1.458970352481059,
+      "h_noise": 0.7257913526447274,
+      "step": 0.0025,
+      "n_grid": 262144,
+      "scale": 1.0,
+      "noise_sd": 0.5,
+      "mass_check": 0.999998456922186,
+      "estimator": "inverse FFT of the product-channel characteristic function"
+    },
+    "resolution_difference_nats": 2.8127422835311222e-08,
+    "support": [
+      -12.0,
+      12.0
+    ],
+    "caveat": "Tiny omitted tail remains; reference is numerical."
+  },
+  "planned_cells": 72,
+  "elapsed_seconds": 693.4864838751964,
+  "finished_utc": "2026-10-28T23:53:37.895778+00:00"
+}

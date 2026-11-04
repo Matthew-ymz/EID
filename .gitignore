@@ -7,3 +7,20 @@ dist/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+
+# Local domain experiments and their supporting files
+/experiments/rwei_hcp/
+/experiments/yeo_recovery/
+/experiments/seeg_no_pca/
+/experiments/mi_double_check/
+/docs/reports/rwei_*.md
+/docs/reports/hcp_*.md
+/docs/reports/seeg_*.md
+/docs/reports/main.md
+/docs/reports/fmri_information_theory_estimators_2026-10-29.md
+/docs/reports/mi_double_check_2026-10-30.md
+/tests/test_benchmark_methods.py
+/tests/test_independence_weights.py
+/tests/test_localized_rwei.py
+/tests/test_scalable_balance.py
+/tests/test_seeg_no_pca_reader.py
