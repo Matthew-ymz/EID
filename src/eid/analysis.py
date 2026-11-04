@@ -33,8 +33,10 @@ def _unit_factor(unit: str) -> float:
     return math.log(2.0) if unit == "nats" else 1.0
 
 
-def _analysis_options(unit, syn_tolerance, exact_max_size):
+def _analysis_options(unit, syn_tolerance, exact_max_size, search):
     _unit_factor(unit)
+    if search not in ("auto", "exact", "spectral", "queyranne"):
+        raise ValueError("search must be 'auto', 'exact', 'spectral', or 'queyranne'.")
     if not math.isfinite(syn_tolerance) or syn_tolerance < 0:
         raise ValueError("syn_tolerance must be finite and nonnegative in the declared unit.")
     if (
@@ -144,8 +146,10 @@ def _analyze(
     syn_tolerance: float,
     exact_max_size: int,
     metadata: dict[str, Any],
+    search: str,
+    submodular_channel: bool = False,
 ) -> AnalysisResult:
-    _analysis_options(unit, syn_tolerance, exact_max_size)
+    _analysis_options(unit, syn_tolerance, exact_max_size, search)
     oracle = _EIOracle(evaluator, sources, syn_tolerance)
     singles = {source: oracle.ei((source,)) for source in sources}
     overall = oracle.ei(sources)
@@ -153,7 +157,16 @@ def _analyze(
     audit = SPTAudit()
     selector = exact_candidate_selector
     affinity_tolerance_zero_count = 0
-    if len(sources) > exact_max_size:
+    queyranne_min_size = None
+    if search == "queyranne":
+        queyranne_min_size = 2
+    elif search == "auto" and submodular_channel:
+        queyranne_min_size = int(exact_max_size) + 1
+    uses_queyranne = queyranne_min_size is not None and len(sources) >= queyranne_min_size
+    uses_spectral = (
+        queyranne_min_size is None and search in ("auto", "spectral") and len(sources) > exact_max_size
+    )
+    if uses_spectral:
         # SPT's spectral adapter uses consecutive local indices. This mapping
         # also allows a user to analyze a subset of the full source coordinates.
         affinity = np.zeros((len(sources), len(sources)))
@@ -179,7 +192,7 @@ def _analyze(
     tree = build_spt(
         sources,
         oracle,
-        config=SPTConfig(syn_tolerance=syn_tolerance),
+        config=SPTConfig(syn_tolerance=syn_tolerance, queyranne_min_size=queyranne_min_size),
         candidate_selector=selector,
         audit=audit,
     )
@@ -196,7 +209,12 @@ def _analyze(
         "spt_audit": audit_values,
         "ei_query_count": len(oracle.cache),
         "ei_table_complete": len(oracle.cache) == (1 << len(sources)) - 1,
-        "search": "exact-at-each-node" if len(sources) <= exact_max_size else "spectral-candidates",
+        "search": "queyranne"
+        if uses_queyranne
+        else "spectral-candidates"
+        if uses_spectral
+        else "exact-at-each-node",
+        "search_requested": search,
         "exact_max_size": int(exact_max_size),
         "closure_error": tree.closure_error,
     }
@@ -215,6 +233,7 @@ def analyze_tpm(
     horizon: int = 1,
     unit: str = "nats",
     exact_max_size: int = 8,
+    search: str = "auto",
     estimator: str | EstimatorConfig = "discrete",
 ) -> AnalysisResult:
     """Analyze a full binary-state TPM under independent uniform interventions.
@@ -222,7 +241,7 @@ def analyze_tpm(
     Rows and columns use lexicographically ordered binary states. The l-step
     kernel is formed before marginalization, so every EI shares one protocol.
     """
-    _analysis_options(unit, syn_tolerance, exact_max_size)
+    _analysis_options(unit, syn_tolerance, exact_max_size, search)
     config = resolve_config(estimator)
     if config.method != "discrete" or config.options:
         raise ValueError("analyze_tpm requires estimator='discrete' without estimator options.")
@@ -251,6 +270,8 @@ def analyze_tpm(
         unit=unit,
         syn_tolerance=syn_tolerance,
         exact_max_size=exact_max_size,
+        search=search,
+        submodular_channel=True,
         metadata={
             "system_kind": "binary-tpm",
             "horizon": int(horizon),
@@ -277,6 +298,7 @@ def analyze_dynamics(
     joint_order: str = "source_first",
     unit: str = "nats",
     exact_max_size: int = 8,
+    search: str = "auto",
     estimator: str | EstimatorConfig = "tm_polynomial",
     estimator_options: dict[str, Any] | None = None,
     train_fraction: float = 1.0,
@@ -290,7 +312,7 @@ def analyze_dynamics(
     Independent or correlated additive Gaussian response noise is explicit.
     All subsets use marginals of the same full-source intervention ensemble.
     """
-    _analysis_options(unit, syn_tolerance, exact_max_size)
+    _analysis_options(unit, syn_tolerance, exact_max_size, search)
     config = resolve_config(estimator, estimator_options)
     check_intervention(intervention, getattr(intervention, "dimension", 0))
     if config.method == "nis":
@@ -318,6 +340,7 @@ def analyze_dynamics(
             syn_tolerance=syn_tolerance,
             unit=unit,
             exact_max_size=exact_max_size,
+            search=search,
         )
         result.metadata.update(
             estimator="local_gaussian",
@@ -357,6 +380,7 @@ def analyze_dynamics(
         syn_tolerance=syn_tolerance,
         unit=unit,
         exact_max_size=exact_max_size,
+        search=search,
     )
     result.metadata.update(
         system_kind="batch-response",
@@ -406,6 +430,7 @@ def analyze_samples(
     seed=0,
     unit="nats",
     exact_max_size=8,
+    search: str = "auto",
 ) -> AnalysisResult:
     """Analyze a complete paired intervention ensemble (including simulator process noise).
 
@@ -414,7 +439,7 @@ def analyze_samples(
     partition raw input coordinates into independent players; source_transforms
     act on each player separately. Targets, samples and fitting split stay fixed.
     """
-    _analysis_options(unit, syn_tolerance, exact_max_size)
+    _analysis_options(unit, syn_tolerance, exact_max_size, search)
     config = resolve_config(estimator, estimator_options)
     x, y = samples(x, "x"), samples(y, "y")
     if len(x) != len(y):
@@ -464,6 +489,7 @@ def analyze_samples(
         unit=unit,
         syn_tolerance=syn_tolerance,
         exact_max_size=exact_max_size,
+        search=search,
         metadata=metadata,
     )
     result.diagnostics["estimates"] = json_safe(list(detail["estimates"].values()))
@@ -481,9 +507,10 @@ def analyze_linear_gaussian(
     source_groups=None,
     unit="nats",
     exact_max_size=8,
+    search: str = "auto",
 ) -> AnalysisResult:
     """Exact rectangular linear Gaussian channel, including omitted-source marginalization."""
-    _analysis_options(unit, syn_tolerance, exact_max_size)
+    _analysis_options(unit, syn_tolerance, exact_max_size, search)
     if not isinstance(intervention, IndependentGaussian):
         raise TypeError("Exact linear Gaussian EI requires IndependentGaussian input.")
     a = np.asarray(coupling, dtype=float)
@@ -509,6 +536,8 @@ def analyze_linear_gaussian(
         unit=unit,
         syn_tolerance=syn_tolerance,
         exact_max_size=exact_max_size,
+        search=search,
+        submodular_channel=True,
         metadata={
             "system_kind": "linear-gaussian-channel",
             **intervention.metadata(),

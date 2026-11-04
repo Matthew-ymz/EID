@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 — Unreleased, 2026-11-04
+
+- Added Queyranne search for the standard SPT residual. Each split uses the shared EI cache and Syn audit.
+- The default `search="auto"` uses exhaustive search on small nodes and Queyranne on larger nodes of exact discrete or analytic Gaussian channels. The Gaussian rule also applies to the fitted local linear channel in `local_gaussian`.
+- Sample-based EI keeps the existing exhaustive and spectral policy under `"auto"`. Use `search="queyranne"` to opt in when the subset objective is suitable.
+- Use `search="spectral"` to recover the previous search policy on all channels or `search="exact"` to exhaustively check every node. Queyranne can resolve tied optima differently.
+
 ## 0.2.0 — Unreleased, 2026-10-11
 
 - Added a unified EI/MI estimator API and explicit configuration for discrete TPM, polynomial/affine/lifted/readout/neural TM, Gaussian, KDE, KSG, linear/local Gaussian channels, and the limited NIS Jacobian approximation.

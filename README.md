@@ -2,7 +2,7 @@
 
 从 [EISyn](https://github.com/Matthew-ymz/EISyn) 抽取的独立 Python 工具库，用于有效信息（EI）、整合有效信息（Ξ）和 Synergy Partition Tree（SPT）分析。
 
-当前源码版本为 `0.2.0`，处于 Alpha 阶段。发行包名为 `eid-toolbox`，导入名为 `eid`。源码仓库：[Matthew-ymz/EID](https://github.com/Matthew-ymz/EID)。源码安装与历史发行版本的安装方式见下文。
+当前源码版本为 `0.3.0`，处于 Alpha 阶段。发行包名为 `eid-toolbox`，导入名为 `eid`。源码仓库：[Matthew-ymz/EID](https://github.com/Matthew-ymz/EID)。源码安装与历史发行版本的安装方式见下文。
 
 ## 安装
 
@@ -30,7 +30,7 @@ python -m build
 
 安装后无需 EISyn 的源码、数据目录、模型权重或运行环境。
 
-首次发布的历史版本为 [`eid-toolbox 0.1.1`](https://pypi.org/project/eid-toolbox/0.1.1/)，代码使用 `import eid`。体验本次 `0.2.0` 升级请从当前源码安装。`eid` 作为 PyPI 发行名被平台的相似名称规则拒绝，工具箱的项目名和 Python 导入名仍为 EID / `eid`。
+首次发布的历史版本为 [`eid-toolbox 0.1.1`](https://pypi.org/project/eid-toolbox/0.1.1/)，代码使用 `import eid`。体验本次 `0.3.0` 升级请从当前源码安装。`eid` 作为 PyPI 发行名被平台的相似名称规则拒绝，工具箱的项目名和 Python 导入名仍为 EID / `eid`。
 
 ## 当前可用入口
 
@@ -134,7 +134,22 @@ result = analyze_model(
 
 谱候选所需的图权重把容差范围内的负二源 Ξ 视为数值零，并记录 `affinity_tolerance_zero_count`；原始 Ξ、EI 和树节点值保持保留。
 
-标准 SPT 固定目标、干预与时间尺度，以最大化两个子节点保留的 Ξ 选择分裂，并递归到单变量。源集合不超过 `exact_max_size` 时逐节点穷举，否则使用现有谱候选策略。逐节点最优并不意味着整棵树全局最优；谱搜索只在生成的候选中比较。
+标准 SPT 固定目标、干预与时间尺度，以最大化两个子节点保留的 Ξ 选择分裂，并递归到单变量。
+公共分析入口接受以下 `search` 参数。
+
+| `search` | 节点搜索策略 |
+|---|---|
+| `"auto"`（默认） | 节点规模不超过 `exact_max_size`（默认 8）时穷举。更大节点在离散 TPM 和解析高斯通道上用 Queyranne，在有限样本 EI 上用谱候选。局部 Gaussian 后端对其线性化通道使用解析规则。 |
+| `"queyranne"` | 每个非单变量节点使用 Queyranne，直接复用按需 EI 缓存。 |
+| `"exact"` | 每个节点穷举。 |
+| `"spectral"` | 恢复旧版策略，小节点穷举，大节点在谱候选集合中搜索。 |
+
+例如 `analyze_tpm(tpm, n_nodes=2, syn_tolerance=1e-12, search="queyranne")`。
+`diagnostics["search_requested"]` 记录请求的策略，`tree.root.split_kind` 和各子节点的
+`split_kind` 记录实际采用的搜索。逐节点最优性依赖同一独立干预诱导分布下的对称次模目标。
+有限样本 EI 可能破坏次模性，显式选择 Queyranne 时可在小规模上用穷举核对。
+并列最优时不同算法可能产生不同树。完整树沿用逐节点递归。
+[原理与实验边界](docs/reports/queyranne_spt_explained_2026-11-02.md)
 
 高阶节点的 Syn 是所选树路径上的层级贡献，不是唯一的纯阶 PID 原子。
 
@@ -143,7 +158,7 @@ result = analyze_model(
 - `eid.discrete`：离散 TPM、源/目标边缘化、布尔 TPM 构建、粗粒化辅助函数。
 - `eid.estimators.transport_map`：仿射、多项式三角密度模型及 MI 估计。
 - `eid.estimators`：统一 `estimate_ei`／`estimate_mi`、配置与后端列表；神经依赖按需加载。
-- `eid.spt`：统一 SPT 构建、非负性检查、精确/谱/分层随机候选。
+- `eid.spt` 提供统一 SPT 构建、非负性检查及穷举、Queyranne、谱、分层随机搜索。底层可通过 `SPTConfig(queyranne_min_size=2)` 选择 Queyranne。
 - `eid.compat`：抽取时保留的历史 Phi 命名适配层。
 
 旧底层 TM 的 `mi_hat` 和 specific-MI 返回 bits，并带有单位字段；连续公共入口负责转换。新的统一估计接口默认 nats。连续分析默认使用多项式 TM；`tm_affine_lifted` 单独实现补充材料 S1.2 的仿射加特征提升和偏差校正协议，两者不能混称。
@@ -179,7 +194,7 @@ python -m pytest
 
 测试包括解析 XOR、单源 COPY、单位转换、多步转移、非连续源索引、模型适配一致性、SPT 闭合和非负性失败，以及从 EISyn 迁移的 TM/SPT 回归测试。
 
-0.2.0 的本地测试、后端切换示例和安装检查见 [验证记录](docs/validation.md)。此前发布的 0.1.1 已完成 PyPI 独立安装验证；0.2.0 当前通过源码安装。
+0.2.0 的本地测试、后端切换示例和安装检查见 [验证记录](docs/validation.md)。此前发布的 0.1.1 已完成 PyPI 独立安装验证。0.3.0 可通过源码安装。
 
 ## 维护与来源
 

@@ -5,14 +5,16 @@ import numpy as np
 import pytest
 
 from eid import (
+    IndependentGaussian,
     UniformBox,
     analyze_dynamics,
+    analyze_linear_gaussian,
     analyze_model,
     analyze_tpm,
     build_deterministic_boolean_tpm,
 )
 from eid.discrete import effective_information_from_tpm
-from eid.spt import SPTConfig, SPTNonnegativityError, build_spt_from_ei_table
+from eid.spt import SPTConfig, SPTNonnegativityError, build_spt_from_ei_table, flatten_nodes
 
 
 def test_exact_xor_units_marginalization_and_closure():
@@ -52,6 +54,7 @@ def test_spectral_route_maps_nonconsecutive_source_coordinates():
         syn_tolerance=1e-12,
         exact_max_size=2,
         unit="bits",
+        search="spectral",
     )
     assert result.ei == pytest.approx(3)
     assert result.xi == pytest.approx(0, abs=1e-12)
@@ -59,7 +62,28 @@ def test_spectral_route_maps_nonconsecutive_source_coordinates():
     assert result.tree.root.sources == (1, 3, 4)
 
 
-def test_model_and_dynamics_use_the_same_intervention_ensemble():
+def test_queyranne_matches_exhaustive_gaussian_tree_with_fewer_ei_queries():
+    rng = np.random.default_rng(713)
+    coupling = rng.normal(size=(3, 10))
+    kwargs = {
+        "intervention": IndependentGaussian(mean=np.zeros(10), std=np.ones(10)),
+        "response_noise_cov": np.eye(3),
+        "syn_tolerance": 1e-10,
+        "unit": "bits",
+    }
+    accelerated = analyze_linear_gaussian(coupling, **kwargs)
+    reference = analyze_linear_gaussian(coupling, **kwargs, search="exact")
+    accelerated_nodes = {node.sources: node.syn_value for node in flatten_nodes(accelerated.tree.root)}
+    reference_nodes = {node.sources: node.syn_value for node in flatten_nodes(reference.tree.root)}
+    assert accelerated_nodes == pytest.approx(reference_nodes, abs=1e-12)
+    assert accelerated.tree.root.split_kind == "queyranne"
+    assert accelerated.diagnostics["ei_query_count"] < reference.diagnostics["ei_query_count"]
+    assert accelerated.tree.closure_error == pytest.approx(0, abs=1e-12)
+    json.dumps(accelerated.to_dict(), allow_nan=False)
+
+
+@pytest.mark.parametrize("search", ["auto", "queyranne"])
+def test_model_and_dynamics_use_the_same_intervention_ensemble(search):
     class Model:
         def predict(self, x):
             return x[:, 0] + x[:, 1]
@@ -71,6 +95,7 @@ def test_model_and_dynamics_use_the_same_intervention_ensemble():
         "degree": 1,
         "sample_count": 1000,
         "seed": 8,
+        "search": search,
     }
     model = Model()
     learned = analyze_model(model, **kwargs)
@@ -78,6 +103,7 @@ def test_model_and_dynamics_use_the_same_intervention_ensemble():
     assert learned.ei_table == known.ei_table
     assert learned.xi > 0
     assert learned.metadata["system_kind"] == "learned-model"
+    assert learned.tree.root.split_kind == ("queyranne" if search == "queyranne" else "exact")
     assert abs(learned.tree.closure_error) < 1e-12
     json.dumps(learned.to_dict(), allow_nan=False)
 
@@ -106,6 +132,12 @@ def test_syn_below_tolerance_fails_with_threshold_and_count():
         build_spt_from_ei_table(
             (0, 1), {(0,): 0.1, (1,): 0.1, (0, 1): 0.1}, config=SPTConfig(syn_tolerance=0.01)
         )
+
+
+def test_queyranne_audits_cuts_used_for_ordering():
+    ei = {(0,): 0, (1,): 0, (2,): 0, (0, 1): 1.02, (0, 2): 0, (1, 2): 0, (0, 1, 2): 1}
+    with pytest.raises(SPTNonnegativityError, match="minimum=-0.02, threshold=-0.01, affected_count=1"):
+        build_spt_from_ei_table((0, 1, 2), ei, config=SPTConfig(syn_tolerance=0.01, queyranne_min_size=2))
 
 
 @pytest.mark.parametrize("base", [0, -2, 1, float("nan"), float("inf")])

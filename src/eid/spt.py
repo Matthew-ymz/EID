@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import itertools
 import math
-from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol, TypeAlias
 
@@ -47,6 +47,7 @@ class SPTConfig:
     complete_to_singletons: bool = True
     candidate_budget: int | None = None
     local_search_top_k: int = 0
+    queyranne_min_size: int | None = None
 
     def __post_init__(self) -> None:
         if self.policy not in (NONNEGATIVE_TOLERANT, SIGNED):
@@ -66,6 +67,17 @@ class SPTConfig:
             raise ValueError("The SPT candidate budget must be positive when declared.")
         if self.local_search_top_k < 0:
             raise ValueError("The SPT local-search start count must be nonnegative.")
+        if self.queyranne_min_size is not None:
+            if (
+                isinstance(self.queyranne_min_size, bool)
+                or not isinstance(self.queyranne_min_size, (int, np.integer))
+                or self.queyranne_min_size < 2
+            ):
+                raise ValueError("queyranne_min_size must be an integer >= 2.")
+            if self.split_objective != RAW_RESIDUAL or self.policy != NONNEGATIVE_TOLERANT:
+                raise ValueError("Queyranne requires the nonnegative raw residual objective.")
+            if self.candidate_budget is not None or self.local_search_top_k:
+                raise ValueError("Queyranne does not support a candidate budget or local search.")
 
 
 @dataclass
@@ -324,6 +336,49 @@ def audit_syn_value(value: float, *, tolerance: float, context: str) -> bool:
     return bool(audit.tolerance_zero_count)
 
 
+def _queyranne_candidates(
+    sources: Coalition, evaluate: Callable[[Coalition, Coalition], float]
+) -> Iterator[Split]:
+    """Yield the cut isolating the last block of each maximum-adjacency ordering.
+
+    The last two blocks form a pendent pair for symmetric submodular costs
+    (Queyranne, 1998). Contract them after retaining the best cut separating
+    them. Bit masks represent unions of original sources during the search.
+    """
+    blocks = [1 << i for i in range(len(sources))]
+    full = (1 << len(sources)) - 1
+    costs = {full: 0.0}
+
+    def split(mask: int) -> Split:
+        return (
+            tuple(source for i, source in enumerate(sources) if mask & (1 << i)),
+            tuple(source for i, source in enumerate(sources) if not mask & (1 << i)),
+        )
+
+    def cost(mask: int) -> float:
+        # Cache one orientation of each symmetric cut, anchored at source 0.
+        if not mask & 1:
+            mask ^= full
+        if mask not in costs:
+            costs[mask] = evaluate(*split(mask))
+        return costs[mask]
+
+    while len(blocks) > 1:
+        remaining = blocks.copy()
+        last = min(remaining)
+        remaining.remove(last)
+        prefix = last
+        while remaining:
+            previous = last
+            last = min(remaining, key=lambda block: (cost(prefix | block) - cost(block), block))
+            remaining.remove(last)
+            prefix |= last
+        yield split(last)
+        blocks.remove(previous)
+        blocks.remove(last)
+        blocks.append(previous | last)
+
+
 def build_spt(
     sources: Sequence[Source],
     oracle: XiOracle,
@@ -333,11 +388,13 @@ def build_spt(
     depth: int = 0,
     audit: SPTAudit | None = None,
 ) -> SPTResult:
-    """Build one SPT with a fixed input/output contract."""
+    """Build one SPT. Queyranne assumes symmetric submodular raw residuals."""
     cfg = config or SPTConfig()
     shared_audit = audit or SPTAudit()
     if not sources or len(set(sources)) != len(sources):
         raise ValueError("SPT sources must be nonempty and unique.")
+    if cfg.queyranne_min_size is not None and candidate_selector is not exact_candidate_selector:
+        raise ValueError("Queyranne cannot be combined with a custom candidate selector.")
 
     def visit(coalition: Coalition, node_depth: int) -> SPTNode:
         block_xi = float(oracle.xi(coalition))
@@ -348,10 +405,6 @@ def build_spt(
         if not cfg.complete_to_singletons and cfg.policy == NONNEGATIVE_TOLERANT and block_xi <= cfg.eps:
             return SPTNode(coalition, block_xi, block_xi, node_depth, "terminal")
 
-        split_kind, raw_candidates = candidate_selector(coalition)
-        candidates = list(raw_candidates)
-        if not candidates:
-            raise RuntimeError(f"No candidate split was generated for coalition {coalition}.")
         scored: list[tuple[float, float, float, Coalition, Coalition]] = []
         evaluated: dict[Split, tuple[float, float, float, Coalition, Coalition]] = {}
 
@@ -370,7 +423,8 @@ def build_spt(
                 or set(left).union(right) != set(coalition)
             ):
                 raise ValueError(f"Invalid SPT bipartition {left} | {right} for {coalition}.")
-            residual = float(block_xi - oracle.xi(left) - oracle.xi(right))
+            left_xi, right_xi = oracle.xi(left), oracle.xi(right)
+            residual = float(block_xi - left_xi - right_xi)
             shared_audit.candidate_count += 1
             if local:
                 shared_audit.local_candidate_count += 1
@@ -384,7 +438,7 @@ def build_spt(
                     audit=shared_audit,
                 )
             objective = split_objective_value(residual, len(left), len(right), objective=cfg.split_objective)
-            value = (objective, float(oracle.xi(left) + oracle.xi(right)), residual, left, right)
+            value = (objective, float(left_xi + right_xi), residual, left, right)
             evaluated[split] = value
             return value
 
@@ -395,8 +449,19 @@ def build_spt(
                 return (item[0], item[2], item[3], item[4])
             return (-item[1], item[2], item[3], item[4])
 
-        for left, right in candidates:
+        if cfg.queyranne_min_size is not None and len(coalition) >= cfg.queyranne_min_size:
+            split_kind = "queyranne"
+            raw_candidates = _queyranne_candidates(
+                coalition, lambda left, right: score(left, right, local=False)[2]
+            )
+        else:
+            split_kind, candidates = candidate_selector(coalition)
+            raw_candidates = list(candidates)
+
+        for left, right in raw_candidates:
             scored.append(score(left, right, local=False))
+        if not scored:
+            raise RuntimeError(f"No candidate split was generated for coalition {coalition}.")
 
         if split_kind == "stratified-random" and cfg.local_search_top_k > 0:
             maximum_evaluations = cfg.candidate_budget or len(scored)
@@ -432,7 +497,10 @@ def build_spt(
                     shared_audit.local_improvement_count += 1
             scored = list(evaluated.values())
 
-        _, _, residual, left, right = min(scored, key=rank)
+        _, _, residual, left, right = min(
+            scored, key=(lambda item: item[2]) if split_kind == "queyranne" else rank
+        )
+        evaluated.clear()
         shared_audit.selected_split_count += 1
         children = (visit(left, node_depth + 1), visit(right, node_depth + 1))
         return SPTNode(coalition, block_xi, float(residual), node_depth, split_kind, children)
