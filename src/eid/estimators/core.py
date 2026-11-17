@@ -43,6 +43,8 @@ class InformationEstimate:
 _METHODS = {
     "discrete": "Exact finite-state TPM; uniform registered inputs",
     "tm_polynomial": "Polynomial autoregressive triangular densities",
+    "rw_ei": "Weighted polynomial TM with one supplied full-source intervention density ratio",
+    "tm_marginal": "Scalar marginal TM and known additive Gaussian noise, full-input EI only",
     "tm_affine": "Affine Gaussian TM; optional Wishart correction",
     "tm_affine_lifted": "S1.2 scalar/two-scalar feature lifts and corrected affine TM",
     "tm_affine_readout": "Shared full-input affine projection with declared intervention covariance",
@@ -57,6 +59,7 @@ _METHODS = {
 _ALIASES = {
     "tm": "tm_polynomial",
     "transport_map": "tm_polynomial",
+    "rw-ei": "rw_ei",
     "knn": "ksg",
     "gaussian_logdet": "gaussian",
     "exact-discrete": "discrete",

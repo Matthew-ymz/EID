@@ -2,7 +2,7 @@
 
 从 [EISyn](https://github.com/Matthew-ymz/EISyn) 抽取的独立 Python 工具库，用于有效信息（EI）、整合有效信息（Ξ）和 Synergy Partition Tree（SPT）分析。
 
-当前源码版本为 `0.3.0`，处于 Alpha 阶段。发行包名为 `eid-toolbox`，导入名为 `eid`。源码仓库：[Matthew-ymz/EID](https://github.com/Matthew-ymz/EID)。源码安装与历史发行版本的安装方式见下文。
+当前源码版本为 `0.3.1`，处于 Alpha 阶段。发行包名为 `eid-toolbox`，导入名为 `eid`。源码仓库：[Matthew-ymz/EID](https://github.com/Matthew-ymz/EID)。源码安装与历史发行版本的安装方式见下文。
 
 ## 安装
 
@@ -30,7 +30,7 @@ python -m build
 
 安装后无需 EISyn 的源码、数据目录、模型权重或运行环境。
 
-首次发布的历史版本为 [`eid-toolbox 0.1.1`](https://pypi.org/project/eid-toolbox/0.1.1/)，代码使用 `import eid`。体验本次 `0.3.0` 升级请从当前源码安装。`eid` 作为 PyPI 发行名被平台的相似名称规则拒绝，工具箱的项目名和 Python 导入名仍为 EID / `eid`。
+首次发布的历史版本为 [`eid-toolbox 0.1.1`](https://pypi.org/project/eid-toolbox/0.1.1/)，代码使用 `import eid`。当前开发版请从源码安装。`eid` 作为 PyPI 发行名被平台的相似名称规则拒绝，工具箱的项目名和 Python 导入名仍为 EID / `eid`。
 
 ## 当前可用入口
 
@@ -194,7 +194,7 @@ python -m pytest
 
 测试包括解析 XOR、单源 COPY、单位转换、多步转移、非连续源索引、模型适配一致性、SPT 闭合和非负性失败，以及从 EISyn 迁移的 TM/SPT 回归测试。
 
-0.2.0 的本地测试、后端切换示例和安装检查见 [验证记录](docs/validation.md)。此前发布的 0.1.1 已完成 PyPI 独立安装验证。0.3.0 可通过源码安装。
+0.2.0 的本地测试、后端切换示例和安装检查见 [验证记录](docs/validation.md)。此前发布的 0.1.1 已完成 PyPI 独立安装验证。
 
 ## 维护与来源
 

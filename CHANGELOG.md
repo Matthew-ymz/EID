@@ -1,5 +1,12 @@
 # Changelog
 
+This is the version history for EID. Add the newest version first, with its date, main improvements and fixes, and any compatibility or migration notes. Keep source synchronization and package publication status separate.
+
+## 0.3.1 — Unreleased, 2026-11-17
+
+- Added opt-in RW-EI to let callers compute EI and SPT from reweighted observations without fitting a transition model. `estimate_ei` and `analyze_samples` accept `estimator="rw_ei"` with `estimator_options={"sample_weight": w, "assume_identified": True}`. The caller supplies the full-source density ratio for a declared `UniformBox` or `IndependentGaussian`; the library reuses it for every subset and reports effective sample size. The existing Syn checks, units and default search policy are unchanged.
+- Added the scalar marginal TM reader with known additive Gaussian response noise to reproduce the original frequency experiment. Use `estimate_ei` with `tm_marginal`, or select `readout="marginal_tm"` under `rw_ei`. This entropy subtraction is for the full input only; it does not supply singleton EI or SPT.
+
 ## 0.3.0 — Unreleased, 2026-11-04
 
 - Added Queyranne search for the standard SPT residual. Each split uses the shared EI cache and Syn audit.

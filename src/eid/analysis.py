@@ -315,6 +315,8 @@ def analyze_dynamics(
     _analysis_options(unit, syn_tolerance, exact_max_size, search)
     config = resolve_config(estimator, estimator_options)
     check_intervention(intervention, getattr(intervention, "dimension", 0))
+    if config.method == "rw_ei":
+        raise ValueError("rw_ei takes weighted observations; use analyze_samples or estimate_ei.")
     if config.method == "nis":
         raise ValueError(
             "NIS cannot provide general subset EI/SPT. Use estimate_ei(dynamics, estimator='nis')."
@@ -438,6 +440,11 @@ def analyze_samples(
     not become causal merely by supplying a distribution object. source_groups
     partition raw input coordinates into independent players; source_transforms
     act on each player separately. Targets, samples and fitting split stay fixed.
+
+    With estimator="rw_ei", supply the full-source intervention-to-observation
+    density ratio as sample_weight and explicitly set assume_identified=True in
+    estimator_options. Every subset uses the same weights and target. Estimated
+    weights do not guarantee independence, support coverage, or nonnegative Syn.
     """
     _analysis_options(unit, syn_tolerance, exact_max_size, search)
     config = resolve_config(estimator, estimator_options)
@@ -461,15 +468,17 @@ def analyze_samples(
         seed=seed,
         source_transforms=source_transforms,
     )
+    is_reweighted = config.method == "rw_ei"
+    options = {k: v for k, v in config.options.items() if not is_reweighted or k != "sample_weight"}
     metadata = {
-        "system_kind": "intervention-samples",
+        "system_kind": "reweighted-observations" if is_reweighted else "intervention-samples",
         **intervention.metadata(),
         "source_dimension": x.shape[1],
         "target_dimension": y.shape[1],
         "sample_count": len(x),
         "source_groups": [list(g) for g in groups],
         "estimator_method": config.method,
-        "estimator_options": json_safe(config.options),
+        "estimator_options": json_safe(options),
         "estimator": config.method,
         **json_safe(detail["protocol"]),
     }

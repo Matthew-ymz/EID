@@ -13,7 +13,7 @@ from .estimators import EstimatorConfig, InformationEstimate, available_estimato
 from .interventions import IndependentEmpirical, IndependentGaussian, UniformBox
 from .spt import SPTConfig, SPTNonnegativityError, build_spt, build_spt_from_ei_table
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "AnalysisResult",
